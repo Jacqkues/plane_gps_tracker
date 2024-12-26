@@ -1,0 +1,176 @@
+services:
+  kafka-1:
+    image: apache/kafka:latest
+    container_name: kafka-1
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_NODE_ID: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CLUSTER_ID: "YWM0Nzk1NjZhY2QxMTFlZj"
+    volumes:
+      - kafka-data-1:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      retries: 5
+      start_period: 10s
+      timeout: 20s
+
+  kafka-2:
+    image: apache/kafka:latest
+    container_name: kafka-2
+    ports:
+      - "9094:9092"
+      - "9095:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9094
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_NODE_ID: 2
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CLUSTER_ID: "YWM0Nzk1NjZhY2QxMTFlZj"
+    volumes:
+      - kafka-data-2:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      retries: 5
+      start_period: 10s
+      timeout: 20s
+
+  kafka-3:
+    image: apache/kafka:latest
+    container_name: kafka-3
+    ports:
+      - "9096:9092"
+      - "9097:9093"
+    environment:
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9096
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_NODE_ID: 3
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_CLUSTER_ID: "YWM0Nzk1NjZhY2QxMTFlZj"
+    volumes:
+      - kafka-data-3:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      retries: 5
+      start_period: 10s
+      timeout: 20s
+    
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8888:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "kraft-cluster"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "${BROKER_IP}:9092,${BROKER_IP}:9094,${BROKER_IP}:9096"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    restart: always
+    environment:
+      POSTGRES_USER: user      # Set your PostgreSQL username
+      POSTGRES_PASSWORD: password  # Set your PostgreSQL password
+      POSTGRES_DB: GPS_TRACKER    # Set the database name
+    ports:
+      - "5432:5432"  # Expose the PostgreSQL port
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "user"]
+      interval: 30s
+      retries: 5
+      start_period: 10s
+      timeout: 20s
+
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.fr
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+
+  kafka_to_postgresql:
+    build:
+      context: ./log_db
+      dockerfile: Dockerfile
+    restart: on-failure
+    environment:
+      DB_HOST: postgres_container
+      DB_NAME: GPS_TRACKER
+      DB_USER: user
+      DB_PASSWORD: password
+      BROKER_IP: ${BROKER_IP}
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - postgres
+  websocket-stream:
+    build:
+      context: ./ws_streaming
+    restart: on-failure
+    container_name: ws_streaming
+    ports:
+      - "8000:8000"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - postgres
+    environment:
+      BROKER_IP: ${BROKER_IP}
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    ports:
+      - "1234:80"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+      - postgres
+      - websocket-stream
+
+
+volumes:
+   postgres_data:
+   kafka-data-1:
+   kafka-data-2:
+   kafka-data-3:

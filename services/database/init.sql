@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS plane_data (
+    id SERIAL PRIMARY KEY,
+    plane_id TEXT NOT NULL,
+    latitude DOUBLE PRECISION NOT NULL,
+    longitude DOUBLE PRECISION NOT NULL,
+    speed_kmh DOUBLE PRECISION NOT NULL,
+    timestamp TIMESTAMP NOT NULL
+);
+
