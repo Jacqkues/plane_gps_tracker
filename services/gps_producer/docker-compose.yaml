@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Service pour la base de données PostgreSQL
+  db:
+    image: postgres:13  # Utilisation d'une image PostgreSQL officielle
+    container_name: postgres
+    environment:
+      POSTGRES_USER: user  # Nom d'utilisateur de la DB
+      POSTGRES_PASSWORD: password  # Mot de passe de la DB
+      POSTGRES_DB: GPS_TRACKER  # Nom de la base de données
+    volumes:
+      - db_data:/var/lib/postgresql/data  # Stockage persistant pour les données
+      - ../db/init.sql:/docker-entrypoint-initdb.d/init.sql  # Script d'initialisation
+    ports:
+      - "5432:5432"  # Expose le port PostgreSQL
+    networks:
+      - mynetwork
+
+  # Service pour écouter Kafka avec ecoute.py
+  app:
+    build: ./app
+    container_name: python_app
+    command: python3 ecoute.py  # Exécute ecoute.py
+    depends_on:
+      - db
+      - init_db  # Attendre que cities.py ait terminé
+    networks:
+      - mynetwork
+      
+volumes:
+  db_data:  # Volume pour persistance des données PostgreSQL
+
+networks:
+  mynetwork:
+    driver: bridge
