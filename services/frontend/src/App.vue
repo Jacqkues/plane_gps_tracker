@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <h1>Application Vue.js avec WebSocket</h1>
     <WebSocketComponent />
   </div>
 </template>
