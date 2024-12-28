@@ -7,13 +7,13 @@ WORKDIR /app
 COPY ./requirements.txt /app/requirements.txt
 
 # Copier les fichiers de l'application dans le conteneur
-COPY ./app/ /app/
+COPY . /app
 
 # Installer les dépendances à partir de requirements.txt
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Exposer le port que l'application va utiliser
 EXPOSE 5432
 
 # Lancer le script Python (modifiez selon votre besoin)
-CMD ["python", "ecoute.py"]
+CMD ["python", "generate.py"]

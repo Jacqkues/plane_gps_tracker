@@ -5,6 +5,8 @@ import threading
 import json
 from kafka import KafkaProducer
 import argparse
+import sqlite3 
+
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calcule la distance en km entre deux coordonnées GPS (utilise la formule de Haversine)."""
@@ -30,6 +32,20 @@ def move_towards(lat1, lon1, lat2, lon2, distance_to_travel):
     new_lat = lat1 + (lat2 - lat1) * ratio
     new_lon = lon1 + (lon2 - lon1) * ratio
     return new_lat, new_lon
+
+def get_coordinates_from_city(city_name, db_path="../database/cities.sql"):
+    """
+    Récupère les coordonnées (latitude, longitude) d'une ville depuis une base de données SQLite.
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT latitude, longitude FROM cities WHERE name = ?", (city_name,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return result  # Retourne un tuple (latitude, longitude)
+    else:
+        raise ValueError(f"Ville non trouvée dans la base de données : {city_name}")
 
 def generate_coordinates(device_id, start_lat, start_lon, end_lat, end_lon, speed_kmh):
     """
@@ -81,38 +97,27 @@ if __name__ == "__main__":
     # Configurer argparse pour gérer les arguments de la ligne de commande
     parser = argparse.ArgumentParser(description="Simuler un trajet GPS pour un avion.")
     parser.add_argument("--plane_id", type=str, required=True, help="Identifiant de l'avion (plane ID).")
-    # parser.add_argument("--plane_start", type=str, required=True, help="Coordonnées de départ (latitude,longitude).")
-    parser.add_argument("--plane_end", type=str, required=True, help="Coordonnées d'arrivée (latitude,longitude).")
+    parser.add_argument("--start_city", type=str, required=True, help="Nom de la ville de départ.")
+    parser.add_argument("--end_city", type=str, required=True, help="Nom de la ville d'arrivée.")
 
     args = parser.parse_args()
 
-    # Récupérer les coordonnées de départ et d'arrivée
     try:
-        # plane_start = tuple(map(float, args.plane_start.split(",")))  # Convertir en tuple de floats
-        plane_end = tuple(map(float, args.plane_end.split(",")))
-    except ValueError:
-        print("Erreur : Les coordonnées doivent être fournies au format 'latitude,longitude' (ex : 48.8566,2.3522).")
+        start_lat, start_lon = get_coordinates_from_city(args.start_city)
+        end_lat, end_lon = get_coordinates_from_city(args.end_city)
+    except ValueError as e:
+        print(e)
         exit(1)
 
-    plane_start = (48.8566, 2.352)
-    
-    # Configurer Kafka Producer
     producer = KafkaProducer(
         bootstrap_servers=["10.227.211.97:9094", "10.227.211.97:9092", "10.227.211.97:9096"],
         key_serializer=lambda k: k.encode() if isinstance(k, str) else k,
         value_serializer=lambda v: json.dumps(v).encode() if isinstance(v, dict) else v
     )
-    msg = {
-        "plane_id":args.plane_id,
-        "message" : f"start from {plane_end}",
-        "timestamp" : time.strftime("%Y-%m-%d %H:%M:%S")
-    }
-    # Créer un thread pour l'appareil
+
     thread = threading.Thread(
         target=generate_coordinates,
-        args=(args.plane_id, plane_start[0], plane_start[1], plane_end[0], plane_end[1], 900)
+        args=(args.plane_id, start_lat, start_lon, end_lat, end_lon, 900)
     )
     thread.start()
-
-    # Attendre que le thread termine
     thread.join()
