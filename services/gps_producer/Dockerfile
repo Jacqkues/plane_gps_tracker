@@ -4,8 +4,6 @@ FROM python:3.8-slim
 # Définir le répertoire de travail
 WORKDIR /app
 
-COPY ./requirements.txt /app/requirements.txt
-
 # Copier les fichiers de l'application dans le conteneur
 COPY . /app
 
