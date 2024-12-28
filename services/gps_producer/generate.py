@@ -3,10 +3,10 @@ import random
 import math
 import threading
 import json
-from kafka import KafkaProducer
 import argparse
-import sqlite3 
-
+import psycopg2
+import os
+from kafka import KafkaProducer
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calcule la distance en km entre deux coordonnées GPS (utilise la formule de Haversine)."""
@@ -33,19 +33,38 @@ def move_towards(lat1, lon1, lat2, lon2, distance_to_travel):
     new_lon = lon1 + (lon2 - lon1) * ratio
     return new_lat, new_lon
 
-def get_coordinates_from_city(city_name, db_path="../database/cities.sql"):
+def get_coordinates_from_city(city_name):
     """
-    Récupère les coordonnées (latitude, longitude) d'une ville depuis une base de données SQLite.
+    Récupère les coordonnées (latitude, longitude) d'une ville depuis une base de données PostgreSQL.
+    Utilise les variables d'environnement pour se connecter à PostgreSQL.
     """
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute("SELECT latitude, longitude FROM cities WHERE name = ?", (city_name,))
-    result = cursor.fetchone()
-    conn.close()
-    if result:
-        return result  # Retourne un tuple (latitude, longitude)
-    else:
-        raise ValueError(f"Ville non trouvée dans la base de données : {city_name}")
+    DB_HOST = os.getenv('DB_HOST', 'localhost')
+    DB_NAME = os.getenv('DB_NAME', 'postgres')
+    DB_USER = os.getenv('DB_USER', 'postgres')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
+    
+    # Connexion à la base de données PostgreSQL
+    try:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASSWORD
+        )
+        cursor = conn.cursor()
+        query = "SELECT latitude, longitude FROM cities WHERE name = %s"
+        cursor.execute(query, (city_name,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        
+        if result:
+            return result  # Retourne un tuple (latitude, longitude)
+        else:
+            raise ValueError(f"Ville non trouvée dans la base de données : {city_name}")
+    except Exception as e:
+        print(f"Erreur lors de la connexion à la base de données PostgreSQL : {e}")
+        raise
 
 def generate_coordinates(device_id, start_lat, start_lon, end_lat, end_lon, speed_kmh):
     """

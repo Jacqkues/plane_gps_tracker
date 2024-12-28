@@ -10,8 +10,5 @@ COPY . /app
 # Installer les dépendances à partir de requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Exposer le port que l'application va utiliser
-EXPOSE 5432
-
 # Lancer le script Python (modifiez selon votre besoin)
-CMD ["python", "generate.py"]
+ENTRYPOINT ["python", "generate.py"]
