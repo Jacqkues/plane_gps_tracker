@@ -4,9 +4,9 @@ import math
 import threading
 import json
 import argparse
-import psycopg2
-import os
+import csv
 from kafka import KafkaProducer
+import os
 
 def haversine(lat1, lon1, lat2, lon2):
     """Calcule la distance en km entre deux coordonnées GPS (utilise la formule de Haversine)."""
@@ -33,37 +33,25 @@ def move_towards(lat1, lon1, lat2, lon2, distance_to_travel):
     new_lon = lon1 + (lon2 - lon1) * ratio
     return new_lat, new_lon
 
-def get_coordinates_from_city(city_name):
+def get_coordinates_from_city(city_name, csv_path="cities.csv"):
     """
-    Récupère les coordonnées (latitude, longitude) d'une ville depuis une base de données PostgreSQL.
-    Utilise les variables d'environnement pour se connecter à PostgreSQL.
+    Récupère les coordonnées (latitude, longitude) d'une ville depuis un fichier CSV.
+    Le fichier CSV doit avoir les colonnes : 'city_name', 'latitude', 'longitude'.
     """
-    DB_HOST = os.getenv('DB_HOST', 'localhost')
-    DB_NAME = os.getenv('DB_NAME', 'postgres')
-    DB_USER = os.getenv('DB_USER', 'postgres')
-    DB_PASSWORD = os.getenv('DB_PASSWORD', 'password')
-    
-    # Connexion à la base de données PostgreSQL
     try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD
-        )
-        cursor = conn.cursor()
-        query = "SELECT latitude, longitude FROM cities WHERE name = %s"
-        cursor.execute(query, (city_name,))
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        
-        if result:
-            return result  # Retourne un tuple (latitude, longitude)
-        else:
-            raise ValueError(f"Ville non trouvée dans la base de données : {city_name}")
+        with open(csv_path, mode='r', newline='', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row['city_name'].strip().lower() == city_name.strip().lower():
+                    latitude = float(row['latitude'])
+                    longitude = float(row['longitude'])
+                    return latitude, longitude
+            raise ValueError(f"Ville non trouvée dans le fichier CSV : {city_name}")
+    except FileNotFoundError:
+        print(f"Erreur : le fichier {csv_path} n'a pas été trouvé.")
+        raise
     except Exception as e:
-        print(f"Erreur lors de la connexion à la base de données PostgreSQL : {e}")
+        print(f"Erreur lors de la lecture du fichier CSV : {e}")
         raise
 
 def generate_coordinates(device_id, start_lat, start_lon, end_lat, end_lon, speed_kmh):
@@ -129,7 +117,7 @@ if __name__ == "__main__":
         exit(1)
 
     producer = KafkaProducer(
-        bootstrap_servers=["10.227.211.97:9094", "10.227.211.97:9092", "10.227.211.97:9096"],
+        bootstrap_servers=["172.20.10.3:9094", "172.20.10.3:9092", "172.20.10.3:9096"],
         key_serializer=lambda k: k.encode() if isinstance(k, str) else k,
         value_serializer=lambda v: json.dumps(v).encode() if isinstance(v, dict) else v
     )
