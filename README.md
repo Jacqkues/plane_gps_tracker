@@ -13,7 +13,8 @@ Create a .env file in the services repository with the key BROKER_IP=your_ip_adr
 
 launch the docker compose file : `docker compose build` and `docker compose up`
 
-launch the gps generator in gps_producer/generate.py with args 
+launch the gps generator in gps_producer/generate.py : `docker build -t nomImage .` and `docker run nomImage --plane_id="YourPlaneID" --start_city="YourStartCity" --end_city="YourEndCity"`
+ 
 
 
 ## URLS:
