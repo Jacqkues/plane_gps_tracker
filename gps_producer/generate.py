@@ -67,7 +67,7 @@ def generate_coordinates(device_id, start_lat, start_lon, end_lat, end_lon, spee
 
     while remaining_distance > 0.001:  # Arrêt lorsque la distance restante est négligeable
         # Appliquer une variation à la vitesse
-        speed_kmh += random.uniform(-100, 100)  # Variation de ±10 km/h
+        speed_kmh += random.uniform(-10, 10)  # Variation de ±10 km/h
         speed_per_second = speed_kmh / 3600  # Recalculer la vitesse en km/s
 
         # Calculer la distance à parcourir dans cet intervalle de temps
@@ -116,8 +116,9 @@ if __name__ == "__main__":
         print(e)
         exit(1)
 
+    BROKER_IP = os.getenv("BROKER_IP","127.0.0.1")
     producer = KafkaProducer(
-        bootstrap_servers=["172.20.10.3:9094", "172.20.10.3:9092", "172.20.10.3:9096"],
+        bootstrap_servers=[f"{BROKER_IP}:9094", f"{BROKER_IP}:9092", f"{BROKER_IP}:9096"],
         key_serializer=lambda k: k.encode() if isinstance(k, str) else k,
         value_serializer=lambda v: json.dumps(v).encode() if isinstance(v, dict) else v
     )

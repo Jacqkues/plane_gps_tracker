@@ -10,5 +10,8 @@ COPY . /app
 # Installer les dépendances à partir de requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Lancer le script Python (modifiez selon votre besoin)
+#Kafka borker IP
+ENV BROKER_IP=10.18.190.97
+
+# Lancer le script Python
 ENTRYPOINT ["python", "generate.py"]

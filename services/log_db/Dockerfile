@@ -20,7 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY gps_kafka_to_postgresql.py .
-COPY event_kafka_to_postgresql.py .
-COPY main.py .
+
 # Run the Python script
 CMD ["python", "gps_kafka_to_postgresql.py"]

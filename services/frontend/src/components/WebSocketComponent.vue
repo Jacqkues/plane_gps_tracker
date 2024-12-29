@@ -1,26 +1,30 @@
 <template>
   <div class="page-container">
-    <header class="header">
-      <img src="image.png" alt="Logo avion" class="logo" />
-      <h1 class="title">Flight Radar</h1>
-    </header>
 
-    <main>
-      <div>
+
+    <main class="container">
+      <div class="map-container">
         <p v-if="!isConnected" class="error">Tentative de connexion au serveur...</p>
         <div id="map" class="map"></div>
       </div>
+      
+      <div class="data-container">
+      <h2>Plane Data</h2>
+      <div v-for="(speed, id) in Array.from(speeds)" :key="id">
+        <p>Plane {{ speed[0] }}: Speed {{ speed[1] }} km/h</p>
+      </div>
+
+    </div>
+  
     </main>
 
-    <footer class="footer">
-      <p>© 2024 Flight Radar | Construit avec Leaflet et WebSocket</p>
-    </footer>
+
   </div>
 </template>
 
 <script>
 import L from "leaflet";
-
+import { toRaw } from "vue";
 export default {
   data() {
     return {
@@ -31,9 +35,15 @@ export default {
       colorMap: {},
       emojiMap: {},
       emojis: ["✈️", "🛩️", "🚀", "🛸", "🛬", "🛫", "🦅"],
+      speeds: new Map(),
+      
     };
   },
   methods: {
+    getRawData(plane) {
+      // Use Vue's toRaw to unwrap Proxy objects
+      return toRaw(plane);
+    },
     connectWebSocket() {
       this.websocket = new WebSocket("ws://localhost:8000/ws");
 
@@ -47,6 +57,8 @@ export default {
         const plane_id = data.plane_id || data.device_id;
         const { latitude, longitude } = data;
 
+        console.log(data)
+        this.speeds.set(data.plane_id, data.speed_kmh)
         if (!this.planes[plane_id]) {
           const randomColor = this.getRandomColor();
           const randomEmoji = this.getRandomEmoji();
@@ -66,6 +78,8 @@ export default {
             }),
             color: randomColor,
           };
+
+    
         }
 
         const plane = this.planes[plane_id];
@@ -130,29 +144,27 @@ export default {
 .page-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+
   font-family: Arial, sans-serif;
 }
 
-/* Header */
-.header {
-  background-color: #1e2a38;
-  color: white;
-  padding: 10px 20px;
+.container {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  flex-direction: row; /* Align map and data side by side */
+  gap: 20px; /* Adds space between the map and the data */
 }
 
-.logo {
-  height: 50px;
+.map-container {
+  flex: 1; /* Map takes up most of the available space */
 }
 
-.title {
-  font-size: 24px;
-  margin: 0;
+.data-container {
+  flex: 0 0 300px; /* Data container fixed width */
+  overflow-y: auto; /* Make the data scrollable if it overflows */
+  max-height: 80vh; /* Limit the height of the data container */
 }
+
+
 
 /* Map Section */
 .map {
@@ -171,12 +183,4 @@ export default {
 }
 
 /* Footer */
-.footer {
-  background-color: #1e2a38;
-  color: white;
-  text-align: center;
-  padding: 10px 0;
-  margin-top: auto;
-  font-size: 14px;
-}
 </style>
