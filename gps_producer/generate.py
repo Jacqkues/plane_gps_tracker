@@ -116,9 +116,10 @@ if __name__ == "__main__":
         print(e)
         exit(1)
 
-    BROKER_IP = os.getenv("BROKER_IP","127.0.0.1")
+    KAFKA_BROKERS = os.getenv("BROKER", "").split(",")
+    print(KAFKA_BROKERS)
     producer = KafkaProducer(
-        bootstrap_servers=[f"{BROKER_IP}:9094", f"{BROKER_IP}:9092", f"{BROKER_IP}:9096"],
+        bootstrap_servers=KAFKA_BROKERS,
         key_serializer=lambda k: k.encode() if isinstance(k, str) else k,
         value_serializer=lambda v: json.dumps(v).encode() if isinstance(v, dict) else v
     )

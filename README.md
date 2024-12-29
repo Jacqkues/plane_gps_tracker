@@ -14,29 +14,28 @@ This project is a GPS tracker for airplanes. It was built using various technolo
 
 **database/init.sql** : the init script of the postgresql db
 
-**.env** : the code for environnements variables
+
 
 
 **docker-compose.yml** : the docker compose file to launch the project
 
 ## Run the app
 
-Create a .env file in the **services** repository with the key `BROKER_IP=your_ip_adress` 
 
 launch the docker compose file : `docker compose build` and `docker compose up`
 
 Next wait few seconds and go to the web ui at `http://localhost:1234/` 
 
-To launch a plane first go in **gps_producer** repository , next edit the environnements variables of the docker file to add the key `BROKER_IP=your_ip_adress` 
+To launch a plane first go in **gps_producer** repository
 Build the docker image with this command : `docker build -t gps_producer .`
 
-Next start a plane by launching this command : 
+Next start a plane by launching this command , with a connection to the docker network created in the docker compose file: 
 
-`docker run gps_producer --plane_id="YourPlaneID" --start_city="YourStartCity" --end_city="YourEndCity"`
+`docker run --network=services_kafka-network gps_producer --plane_id="YourPlaneID" --start_city="YourStartCity" --end_city="YourEndCity"`
 
 Exemple : 
 
-`docker run gps_producer --plane_id="A307_14" --start_city="Paris" --end_city="Madrid"`
+`docker run --network=services_kafka-network gps_producer --plane_id="A307_14" --start_city="Paris" --end_city="Madrid"`
 
 Go on the web UI and you will see the plane data
  

@@ -6,10 +6,12 @@ import os
 websocket_router = APIRouter()
 
 # Environment variables
-BROKER_IP = os.getenv("BROKER_IP", "127.0.0.1")
+#BROKER_IP = os.getenv("BROKER_IP", "127.0.0.1")
 
-KAFKA_BROKERS = [f'{BROKER_IP}:9092', f'{BROKER_IP}:9094', f'{BROKER_IP}:9096']
+#KAFKA_BROKERS = [f'{BROKER_IP}:9092', f'{BROKER_IP}:9094', f'{BROKER_IP}:9096']
 
+
+KAFKA_BROKERS = os.getenv("BROKER", "").split(",")
 
 async def consume_kafka_messages(websocket: WebSocket, topic: str):
     """

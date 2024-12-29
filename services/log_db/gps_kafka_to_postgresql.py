@@ -4,9 +4,11 @@ import os
 import json  # Assuming the Kafka message payload is JSON formatted
 
 # Environment variables
-BROKER_IP = os.getenv("BROKER_IP", "127.0.0.1")
+#BROKER_IP = os.getenv("BROKER_IP", "127.0.0.1")
 
-KAFKA_BROKERS = [f'{BROKER_IP}:9092', f'{BROKER_IP}:9094', f'{BROKER_IP}:9096']
+#KAFKA_BROKERS = [f'{BROKER_IP}:9092', f'{BROKER_IP}:9094', f'{BROKER_IP}:9096']
+
+KAFKA_BROKERS = os.getenv("BROKER", "").split(",")
 KAFKA_TOPICS = 'gps_raw'
 KAFKA_GROUP_ID = "gps_group_gps_raw"
 

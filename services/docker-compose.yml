@@ -1,3 +1,4 @@
+version: "3.8"
 services:
   kafka-1:
     image: apache/kafka:latest
@@ -8,7 +9,7 @@ services:
     environment:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_NODE_ID: 1
@@ -20,11 +21,13 @@ services:
     volumes:
       - kafka-data-1:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka-1:9092"]
       interval: 30s
       retries: 5
       start_period: 10s
       timeout: 20s
+    networks:
+      - kafka-network
 
   kafka-2:
     image: apache/kafka:latest
@@ -35,7 +38,7 @@ services:
     environment:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_NODE_ID: 2
@@ -47,11 +50,13 @@ services:
     volumes:
       - kafka-data-2:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka-2:9092"]
       interval: 30s
       retries: 5
       start_period: 10s
       timeout: 20s
+    networks:
+      - kafka-network
 
   kafka-3:
     image: apache/kafka:latest
@@ -62,7 +67,7 @@ services:
     environment:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${BROKER_IP}:9096
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_NODE_ID: 3
@@ -74,12 +79,14 @@ services:
     volumes:
       - kafka-data-3:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka-3:9092"]
       interval: 30s
       retries: 5
       start_period: 10s
       timeout: 20s
-    
+    networks:
+      - kafka-network
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -87,31 +94,35 @@ services:
       - "8888:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: "kraft-cluster"
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "${BROKER_IP}:9092,${BROKER_IP}:9094,${BROKER_IP}:9096"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka-1:9092,kafka-2:9092,kafka-3:9092"
     depends_on:
       - kafka-1
       - kafka-2
       - kafka-3
+    networks:
+      - kafka-network
+
   postgres:
     image: postgres:latest
     container_name: postgres_container
     restart: always
     environment:
-      POSTGRES_USER: user      # Set your PostgreSQL username
-      POSTGRES_PASSWORD: password  # Set your PostgreSQL password
-      POSTGRES_DB: GPS_TRACKER    # Set the database name
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: GPS_TRACKER
     ports:
-      - "5432:5432"  # Expose the PostgreSQL port
+      - "5432:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "user"]
       interval: 30s
       retries: 5
       start_period: 10s
       timeout: 20s
-
     volumes:
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kafka-network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -123,6 +134,8 @@ services:
       - "8080:80"
     depends_on:
       - postgres
+    networks:
+      - kafka-network
 
   kafka_to_postgresql:
     build:
@@ -134,12 +147,15 @@ services:
       DB_NAME: GPS_TRACKER
       DB_USER: user
       DB_PASSWORD: password
-      BROKER_IP: ${BROKER_IP}
+      BROKER: 'kafka-1:9092,kafka-2:9094,kafka-3:9096'
     depends_on:
       - kafka-1
       - kafka-2
       - kafka-3
       - postgres
+    networks:
+      - kafka-network
+
   websocket-stream:
     build:
       context: ./ws_streaming
@@ -153,7 +169,9 @@ services:
       - kafka-3
       - postgres
     environment:
-      BROKER_IP: ${BROKER_IP}
+      BROKER: 'kafka-1:9092,kafka-2:9094,kafka-3:9096'
+    networks:
+      - kafka-network
 
   frontend:
     build:
@@ -167,10 +185,15 @@ services:
       - kafka-3
       - postgres
       - websocket-stream
-
+    networks:
+      - kafka-network
 
 volumes:
-   postgres_data:
-   kafka-data-1:
-   kafka-data-2:
-   kafka-data-3:
+  postgres_data:
+  kafka-data-1:
+  kafka-data-2:
+  kafka-data-3:
+
+networks:
+  kafka-network:
+    driver: bridge
